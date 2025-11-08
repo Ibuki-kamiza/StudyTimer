@@ -29,9 +29,22 @@
 		4F4527772EB8BAD400A4F5B6 /* StudyTimerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StudyTimerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4F662AAE2EBFE6EA00924CAA /* Exceptions for "StudyTimer" folder in "StudyTimer" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Untitled.swift,
+			);
+			target = 4F45275D2EB8BAD400A4F5B6 /* StudyTimer */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4F4527602EB8BAD400A4F5B6 /* StudyTimer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4F662AAE2EBFE6EA00924CAA /* Exceptions for "StudyTimer" folder in "StudyTimer" target */,
+			);
 			path = StudyTimer;
 			sourceTree = "<group>";
 		};

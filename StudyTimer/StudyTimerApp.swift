@@ -1,10 +1,3 @@
-//
-//  StudyTimerApp.swift
-//  StudyTimer
-//
-//  Created by pc on 2025/11/03.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -25,8 +18,9 @@ struct StudyTimerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()   // ← ここだけ変える
         }
         .modelContainer(sharedModelContainer)
     }
 }
+
