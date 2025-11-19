@@ -9,15 +9,26 @@ struct RecordScreen: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
+
+                // 勉強時間の記録
+                Section("学習時間") {
                     Button {
                         isShowingStudyForm = true
                     } label: {
-                        Label("記録する（時間）", systemImage: "clock.badge.plus")
+                        HStack {
+                            ZStack {
+                                Image(systemName: "clock")
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 10))
+                                    .offset(x: 8, y: 8)
+                            }
+                            Text("記録する（時間）")
+                        }
                     }
                 }
 
-                Section {
+                // 教材の追加
+                Section("教材") {
                     Button {
                         isShowingMaterialForm = true
                     } label: {
@@ -25,39 +36,39 @@ struct RecordScreen: View {
                     }
                 }
 
+                // 追加した教材の一覧
                 if !store.materials.isEmpty {
                     Section("追加した教材") {
                         ForEach(store.materials) { material in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(material.title)
                                     .font(.headline)
-                                Text(material.finishedAt.formatted(date: .abbreviated, time: .omitted))
+
+                                Text(material.finishedAt, style: .date)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+
                                 if !material.comment.isEmpty {
                                     Text(material.comment)
                                         .font(.caption)
                                 }
                             }
-                            .padding(.vertical, 2)
+                            .padding(.vertical, 4)
                         }
                     }
                 }
             }
             .navigationTitle("記録")
+            // 学習時間入力シート（RecordFormView 側の引数: minutes, date, comment）
             .sheet(isPresented: $isShowingStudyForm) {
-                // 勉強時間を登録する方
-                RecordFormView { minutes, material, comment in
-                    store.addRecord(date: Date(), minutes: minutes)
-                    isShowingStudyForm = false
+                RecordFormView { minutes, date, _ in
+                    store.addRecord(date: date, minutes: minutes)
                 }
-                .environmentObject(store)
             }
+            // 教材追加シート（MaterialFormView 側の引数: title, finishedAt, comment）
             .sheet(isPresented: $isShowingMaterialForm) {
-                // 教材を登録する方
                 MaterialFormView { title, finishedAt, comment in
-                    store.addMaterial(title: title, date: finishedAt, comment: comment)
-                    isShowingMaterialForm = false
+                    store.addMaterial(title: title, finishedAt: finishedAt, comment: comment)
                 }
             }
         }

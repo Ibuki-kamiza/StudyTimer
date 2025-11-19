@@ -2,19 +2,63 @@ import SwiftUI
 import Charts
 
 struct HomeView: View {
-    @State private var lastUpdated = Date()
-    // 日にちごとの学習時間（分）
-    @State private var studyMinutesByDay: [Int: Int] = [
-        1: 90, 3: 45, 5: 120, 10: 30
-    ]
-    // 今表示している月
+    @EnvironmentObject var store: StudyStore
+
+    // 今表示している月（カレンダー用）
     @State private var displayedDate = Date()
+    // 下スワイプ更新用（デバッグ表示）
+    @State private var lastUpdated = Date()
 
     private let calendar = Calendar.current
 
-    // 円グラフ用データの合計（時間）
-    private var totalStudyHours: Double {
-        sampleData.map { $0.value }.reduce(0, +)
+    // 今月の合計学習時間（時間）
+    private var monthlyTotalHours: Double {
+        let totalMinutes = store.studyMinutesByDay.values.reduce(0, +)
+        return Double(totalMinutes) / 60.0
+    }
+
+    // 今週の合計学習時間（分）
+    private var weeklyTotalMinutes: Int {
+        let today = Date()
+        guard let startOfWeek = calendar.date(
+            from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today)
+        ) else { return 0 }
+
+        var total = 0
+        for offset in 0..<7 {
+            guard let d = calendar.date(byAdding: .day, value: offset, to: startOfWeek) else { continue }
+            // 今月以外は無視（store が「今月の日数」で持っている前提）
+            guard calendar.isDate(d, equalTo: today, toGranularity: .month) else { continue }
+            let day = calendar.component(.day, from: d)
+            total += store.studyMinutesByDay[day] ?? 0
+        }
+        return total
+    }
+
+    // 今日の学習時間（分）
+    private var todayMinutes: Int {
+        let day = calendar.component(.day, from: Date())
+        return store.studyMinutesByDay[day] ?? 0
+    }
+
+    // 月間目標に対する進捗（0〜1）
+    private var monthlyProgress: Double {
+        guard store.monthlyGoalMinutes > 0 else { return 0 }
+        let totalMinutes = store.studyMinutesByDay.values.reduce(0, +)
+        return min(1.0, Double(totalMinutes) / Double(store.monthlyGoalMinutes))
+    }
+
+    // 週間目標に対する進捗（0〜1）
+    private var weeklyProgress: Double {
+        guard store.weeklyGoalMinutes > 0 else { return 0 }
+        return min(1.0, Double(weeklyTotalMinutes) / Double(store.weeklyGoalMinutes))
+    }
+
+    // 大事な日まであと何日か（StudyStore の importantDate を使用）
+    private var daysToImportant: Int {
+        let from = calendar.startOfDay(for: Date())
+        let to   = calendar.startOfDay(for: store.importantDate)
+        return calendar.dateComponents([.day], from: from, to: to).day ?? 0
     }
 
     var body: some View {
@@ -22,154 +66,22 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
 
-                    // ① 今日の勉強予定・実績
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("今日の勉強予定時間")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("3時間00分")
-                                .font(.title2)
-                                .bold()
-                        }
-                        Spacer()
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("実績")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("2時間45分")
-                                .font(.title2)
-                                .bold()
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    // ① 今日の学習予定時間・実績
+                    todaySection
 
-                    // ② カレンダー（月切り替え付き）
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Button { changeMonth(by: -1) } label: {
-                                Image(systemName: "chevron.left")
-                            }
-                            Spacer()
-                            Text(monthTitle(for: displayedDate))
-                                .font(.headline)
-                            Spacer()
-                            Button { changeMonth(by: 1) } label: {
-                                Image(systemName: "chevron.right")
-                            }
-                        }
+                    // ② カレンダー（1ヶ月 & 日ごとの学習時間）
+                    calendarSection
 
-                        // 曜日
-                        let weekdays = ["S","M","T","W","T","F","S"]
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7)) {
-                            ForEach(weekdays.indices, id: \.self) { idx in
-                                Text(weekdays[idx])
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity)
-                            }
-                        }
+                    // ③ 大事な日のカウントダウン
+                    countdownSection
 
-                        // 日付 ＋ 学習時間
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                            ForEach(daysInMonth(for: displayedDate), id: \.self) { day in
-                                VStack(spacing: 2) {
-                                    Text("\(day)")
-                                        .font(.body)
-                                    Text(formattedTime(for: day))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(6)
-                                .background(Color(.systemGray5))
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    // ④ 月間 / 週間の学習目標
+                    goalSection
 
-                    // ③ カウントダウン
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("大事な日のカウントダウン")
-                            .font(.headline)
-                        HStack {
-                            Text("試験日まであと")
-                            Text("10日")
-                                .font(.title)
-                                .bold()
-                            Spacer()
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    // ⑤ 科目別円グラフ
+                    chartSection
 
-                    // ④ 目標
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("目標")
-                            .font(.headline)
-                        HStack {
-                            Text("11月目標：40時間")
-                            Spacer()
-                            ProgressView(value: 0.6)
-                                .frame(width: 100)
-                            Image(systemName: "square")
-                        }
-                        HStack {
-                            Text("今週：10時間")
-                            Spacer()
-                            ProgressView(value: 0.3)
-                                .frame(width: 100)
-                            Image(systemName: "square")
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    // ⑤ 円グラフ（科目別＋合計＋凡例）
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("科目別学習割合")
-                            .font(.headline)
-
-                        // 合計時間を表示
-                        Text("合計学習時間：\(String(format: "%.1f", totalStudyHours)) 時間")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        // 円グラフ本体
-                        Chart(sampleData) { item in
-                            SectorMark(
-                                angle: .value("時間", item.value),
-                                innerRadius: .ratio(0.6)
-                            )
-                            .foregroundStyle(item.color)
-                        }
-                        .frame(height: 220)
-
-                        // 教材名＋時間の一覧（凡例）
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(sampleData) { item in
-                                HStack {
-                                    Circle()
-                                        .fill(item.color)
-                                        .frame(width: 10, height: 10)
-                                    Text("\(item.category)：\(String(format: "%.1f", item.value)) 時間")
-                                        .font(.caption)
-                                }
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    // デバッグ用の更新時間
+                    // デバッグ用：最終更新
                     Text("最終更新：\(lastUpdated.formatted(date: .omitted, time: .standard))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -177,17 +89,193 @@ struct HomeView: View {
                 .padding()
             }
             .navigationTitle("ホーム")
-            .refreshable { await reloadData() }
+            .refreshable {
+                await reloadData()
+            }
         }
     }
 
-    // MARK: - 下スワイプで更新
-    private func reloadData() async {
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        lastUpdated = Date()
+    // MARK: - セクション表示
+
+    /// ① 今日の予定 & 実績
+    private var todaySection: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("今日の勉強予定時間")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                // 予定は「毎日の学習目標」を流用
+                let h = store.dailyGoalMinutes / 60
+                let m = store.dailyGoalMinutes % 60
+                Text("\(h)時間\(String(format: "%02d", m))分")
+                    .font(.title2)
+                    .bold()
+            }
+            Spacer()
+            VStack(alignment: .leading, spacing: 4) {
+                Text("実績")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("\(todayMinutes / 60)時間\(String(format: "%02d", todayMinutes % 60))分")
+                    .font(.title2)
+                    .bold()
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - カレンダー操作
+    /// ② カレンダー
+    private var calendarSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Button { changeMonth(by: -1) } label: {
+                    Image(systemName: "chevron.left")
+                }
+                Spacer()
+                Text(monthTitle(for: displayedDate))
+                    .font(.headline)
+                Spacer()
+                Button { changeMonth(by: 1) } label: {
+                    Image(systemName: "chevron.right")
+                }
+            }
+
+            // 曜日
+            let weekdays = ["S","M","T","W","T","F","S"]
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7)) {
+                ForEach(weekdays, id: \.self) { d in
+                    Text(d)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            // 日付 + 学習時間 00:00
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                ForEach(daysInMonth(for: displayedDate), id: \.self) { day in
+                    let minutes = store.studyMinutesByDay[day] ?? 0
+                    VStack(spacing: 2) {
+                        Text("\(day)")
+                            .font(.body)
+                        Text(String(format: "%02d:%02d", minutes / 60, minutes % 60))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(6)
+                    .background(Color(.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// ③ 大事な日のカウントダウン
+    private var countdownSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // タイトルはプロフィール編集で設定したものを使う
+            Text(store.importantTitle.isEmpty
+                 ? "大事な日のカウントダウン"
+                 : store.importantTitle)
+                .font(.headline)
+
+            // 日付も表示
+            Text(store.importantDate, style: .date)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Text("まであと")
+                Text("\(max(0, daysToImportant))日")
+                    .font(.title)
+                    .bold()
+                Spacer()
+            }
+            .padding(.top, 4)
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// ④ 月間 / 週間目標
+    private var goalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("目標")
+                .font(.headline)
+
+            // 月間
+            HStack {
+                let monthlyHours = store.monthlyGoalMinutes / 60
+                Text("今月の目標：\(monthlyHours)時間")
+                Spacer()
+                ProgressView(value: monthlyProgress)
+                    .frame(width: 120)
+                Image(systemName: monthlyProgress >= 1.0 ? "checkmark.square.fill" : "square")
+            }
+
+            // 週間
+            HStack {
+                let weeklyHours = store.weeklyGoalMinutes / 60
+                Text("今週の目標：\(weeklyHours)時間")
+                Spacer()
+                ProgressView(value: weeklyProgress)
+                    .frame(width: 120)
+                Image(systemName: weeklyProgress >= 1.0 ? "checkmark.square.fill" : "square")
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// ⑤ 円グラフ
+    private var chartSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("科目別学習割合")
+                .font(.headline)
+
+            Chart(sampleData) { item in
+                SectorMark(
+                    angle: .value("時間", item.value),
+                    innerRadius: .ratio(0.6)
+                )
+                .foregroundStyle(item.color)
+            }
+            .frame(height: 220)
+
+            // 凡例
+            ForEach(sampleData) { item in
+                HStack {
+                    Circle()
+                        .fill(item.color)
+                        .frame(width: 10, height: 10)
+                    Text("\(item.category)：\(String(format: "%.1f", item.value)) 時間")
+                        .font(.caption)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - 共通ヘルパー
+
+    private func reloadData() async {
+        // 今はダミーで0.5秒待つだけ
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        await MainActor.run {
+            lastUpdated = Date()
+        }
+    }
+
     private func changeMonth(by value: Int) {
         if let newDate = calendar.date(byAdding: .month, value: value, to: displayedDate) {
             displayedDate = newDate
@@ -205,16 +293,10 @@ struct HomeView: View {
         guard let range = calendar.range(of: .day, in: .month, for: date) else { return [] }
         return Array(range)
     }
-
-    private func formattedTime(for day: Int) -> String {
-        let minutes = studyMinutesByDay[day] ?? 0
-        let h = minutes / 60
-        let m = minutes % 60
-        return String(format: "%02d:%02d", h, m)
-    }
 }
 
-// MARK: - グラフ用のダミーデータ
+// MARK: - 円グラフ用ダミーデータ
+
 struct StudyCategory: Identifiable {
     let id = UUID()
     let category: String
@@ -232,5 +314,6 @@ let sampleData: [StudyCategory] = [
 
 #Preview {
     HomeView()
+        .environmentObject(StudyStore())
 }
 
