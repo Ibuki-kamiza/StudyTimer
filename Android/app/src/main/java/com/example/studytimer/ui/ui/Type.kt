@@ -1,4 +1,4 @@
-package com.example.studytimer.ui.theme
+package com.example.studytimer.ui.ui
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

@@ -1,6 +1,5 @@
-package com.example.studytimer
+package com.example.studytimer.ui
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Edit
@@ -8,49 +7,53 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
-
-// タブの種類
-enum class BottomTab(val label: String, val icon: ImageVector) {
-    Timer("タイマー", Icons.Filled.AccessTime),   // ← Timer ではなく AccessTime
-    Home("ホーム", Icons.Filled.Home),
-    Record("記録", Icons.Filled.Edit),
-    Profile("プロフィール", Icons.Filled.Person)
-}
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.studytimer.model.StudyViewModel
+import com.example.studytimer.ui.home.HomeScreen
+import com.example.studytimer.ui.profile.ProfileScreen
+import com.example.studytimer.ui.record.RecordScreen
+import com.example.studytimer.ui.timer.TimerScreen
 
 @Composable
-fun MainScreen() {
-    var selectedTab by remember { mutableStateOf(BottomTab.Home) }
+fun MainScreen(vm: StudyViewModel = viewModel()) {
+    var selectedTab by remember { mutableStateOf(0) }
 
     Scaffold(
         bottomBar = {
             NavigationBar {
-                BottomTab.values().forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) }
-                    )
-                }
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
+                    label = { Text("タイマー") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                    label = { Text("ホーム") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    label = { Text("記録") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    label = { Text("プロフィール") }
+                )
             }
         }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            when (selectedTab) {
-                BottomTab.Timer   -> Text("タイマー画面（これから作る）")
-                BottomTab.Home    -> Text("ホーム画面（これから作る）")
-                BottomTab.Record  -> Text("記録画面（これから作る）")
-                BottomTab.Profile -> Text("プロフィール画面（これから作る）")
-            }
+        when (selectedTab) {
+            0 -> TimerScreen(vm, modifier = Modifier.padding(innerPadding))
+            1 -> HomeScreen(vm, modifier = Modifier.padding(innerPadding))
+            2 -> RecordScreen(vm, modifier = Modifier.padding(innerPadding))
+            3 -> ProfileScreen(vm, modifier = Modifier.padding(innerPadding))
         }
     }
 }

@@ -6,12 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.studytimer"
-
-    compileSdk {
-        // Android 14 (API 34) みたいな感じで書きたいところだけど、
-        // 今のテンプレでは version = release(36) になっているので、そのまま残しています
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.studytimer"
@@ -52,7 +47,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
 
-    // Compose BOM（バージョンはここでまとめて管理）
+    // Compose BOM（Compose関連のバージョン管理）
     implementation(platform(libs.androidx.compose.bom))
 
     implementation(libs.androidx.compose.ui)
@@ -60,14 +55,16 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
-    // 👇 これを追加：AccessTime などのアイコン用
+    // ✅ Icons.Filled.AccessTime / Timer などを使うための拡張アイコン
     implementation("androidx.compose.material:material-icons-extended")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

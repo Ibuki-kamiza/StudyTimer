@@ -3,48 +3,22 @@ package com.example.studytimer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.activity.viewModels   // ← これを追加
+import com.example.studytimer.model.StudyViewModel
+import com.example.studytimer.ui.MainScreen
 import com.example.studytimer.ui.theme.StudyTimerTheme
 
 class MainActivity : ComponentActivity() {
+
+    // iOS の @EnvironmentObject var store に相当
+    private val vm: StudyViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             StudyTimerTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    MainScreen()
-                }
+                MainScreen(vm)   // ← ViewModel を渡す
             }
         }
-    }
-}
-
-@Composable
-fun HomeScreen() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "StudyTimer Android",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "ここまで表示されたら成功！",
-            style = MaterialTheme.typography.bodyMedium
-        )
     }
 }

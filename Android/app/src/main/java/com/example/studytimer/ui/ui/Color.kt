@@ -1,4 +1,4 @@
-package com.example.studytimer.ui.theme
+package com.example.studytimer.ui.ui
 
 import androidx.compose.ui.graphics.Color
 
