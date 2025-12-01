@@ -1,124 +1,120 @@
 package com.example.studytimer.ui.timer
 
-import android.media.RingtoneManager
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.studytimer.StudyViewModel
+import androidx.compose.ui.unit.sp
+import com.example.studytimer.model.StudyViewModel
 import kotlinx.coroutines.delay
 
-private enum class Phase { Focus, Break }
+enum class Phase { FOCUS, BREAK }
 
 @Composable
-fun TimerScreen(vm: StudyViewModel) {
+fun TimerScreen(vm: StudyViewModel, modifier: Modifier = Modifier) {
 
-    var phase by remember { mutableStateOf(Phase.Focus) }
-    var remainingSec by remember { mutableStateOf(25 * 60) }
+    var phase by remember { mutableStateOf(Phase.FOCUS) }
     var isRunning by remember { mutableStateOf(false) }
+    var remaining by remember { mutableStateOf(25 * 60) }
     var focusCount by remember { mutableStateOf(0) }
 
-    // 背景はプロフィール画像を使う
-    val bgBitmap = vm.profileImageBitmap
-
+    // 1秒ごとに残り時間を減らす
     LaunchedEffect(isRunning, phase) {
-        if (!isRunning) return@LaunchedEffect
-        while (isRunning && remainingSec > 0) {
+        while (isRunning) {
             delay(1000)
-            remainingSec--
-        }
-        if (isRunning && remainingSec == 0) {
-            // 終了音
-            runCatching {
-                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                RingtoneManager.getRingtone(LocalContext.current, uri).play()
-            }
-            isRunning = false
-
-            if (phase == Phase.Focus) {
-                focusCount++
-                phase = Phase.Break
-                remainingSec = 5 * 60
+            if (remaining > 0) {
+                remaining--
             } else {
-                phase = Phase.Focus
-                remainingSec = 25 * 60
+                when (phase) {
+                    Phase.FOCUS -> {
+                        focusCount++
+                        phase = Phase.BREAK
+                        remaining = 5 * 60
+                    }
+                    Phase.BREAK -> {
+                        phase = Phase.FOCUS
+                        remaining = 25 * 60
+                    }
+                }
             }
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        // 背景
-        if (bgBitmap != null) {
-            Image(
-                bitmap = bgBitmap.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
-        } else {
-            Box(Modifier.fillMaxSize().background(Color(0xFFF6F6F6)))
-        }
-
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFFACB65),
+                        Color(0xFFF07A63),
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
         Column(
-            Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(24.dp)
         ) {
-
+            // 状態テキスト
             Text(
-                if (phase == Phase.Focus) "集中 25分" else "休憩 5分",
-                style = MaterialTheme.typography.titleLarge,
+                text = if (phase == Phase.FOCUS) "集中タイム" else "休憩タイム",
+                fontSize = 20.sp,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // 残り時間
+            Text(
+                text = formatTime(remaining),
+                fontSize = 64.sp,
                 color = Color.White
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
-            val mm = remainingSec / 60
-            val ss = remainingSec % 60
-
-            Text(
-                "${mm.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}",
-                style = MaterialTheme.typography.displayLarge,
-                color = Color.White
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            // ◯で回数表示（最大4つ表示）
+            // ◯ ◯ ◯ ◯
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(4) { idx ->
-                    val filled = idx < (focusCount % 4)
+                repeat(4) { index ->
                     Box(
-                        Modifier.size(12.dp)
+                        modifier = Modifier
+                            .size(16.dp)
                             .clip(CircleShape)
-                            .background(if (filled) Color.White else Color.White.copy(alpha = 0.35f))
+                            .background(
+                                if (index < focusCount) Color.White else Color.Transparent
+                            )
+                            .border(width = 2.dp, color = Color.White.copy(alpha = 0.6f), shape = CircleShape)
                     )
                 }
             }
 
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(32.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { isRunning = !isRunning }) {
-                    Text(if (isRunning) "一時停止" else "スタート")
-                }
-                OutlinedButton(onClick = {
-                    isRunning = false
-                    phase = Phase.Focus
-                    remainingSec = 25 * 60
-                    focusCount = 0
-                }) {
-                    Text("リセット")
-                }
+            Button(
+                onClick = { isRunning = !isRunning },
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(CircleShape)
+            ) {
+                Text(text = if (isRunning) "ストップ" else "スタート", fontSize = 20.sp)
             }
         }
     }
+}
+
+private fun formatTime(sec: Int): String {
+    val m = sec / 60
+    val s = sec % 60
+    return "%02d:%02d".format(m, s)
 }

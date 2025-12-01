@@ -3,10 +3,10 @@ package com.example.studytimer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels   // ← これを追加
+import androidx.activity.viewModels
 import com.example.studytimer.model.StudyViewModel
 import com.example.studytimer.ui.MainScreen
-import com.example.studytimer.ui.theme.StudyTimerTheme
+
 
 class MainActivity : ComponentActivity() {
 
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             StudyTimerTheme {
-                MainScreen(vm)   // ← ViewModel を渡す
+                MainScreen(vm)
             }
         }
     }

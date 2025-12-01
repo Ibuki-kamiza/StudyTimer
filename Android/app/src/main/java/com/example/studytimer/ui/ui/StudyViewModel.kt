@@ -1,53 +1,48 @@
 package com.example.studytimer.model
 
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.*
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.time.LocalDate
+import java.util.UUID
 
-enum class BottomTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Timer("タイマー", Icons.Filled.AccessTime),
-    Home("ホーム", Icons.Filled.Home),
-    Record("記録", Icons.Filled.Edit),
-    Profile("プロフィール", Icons.Filled.Person)
-}
+class StudyViewModel : ViewModel() {
 
-@Composable
-fun MainScreen(vm: StudyViewModel = viewModel()) {
-    val nav = rememberNavController()
-    var tab by remember { mutableStateOf(BottomTab.Home) }
+    // --- プロフィール ---
+    val profileName = MutableStateFlow("なまえ さん")
+    val targetSchool = MutableStateFlow("〇〇高校")
+    val targetQualifications = MutableStateFlow("")
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                BottomTab.entries.forEach { t ->
-                    NavigationBarItem(
-                        selected = tab == t,
-                        onClick = {
-                            tab = t
-                            nav.navigate(t.name) {
-                                popUpTo(nav.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(t.icon, contentDescription = t.label) },
-                        label = { Text(t.label) }
-                    )
-                }
-            }
-        }
-    ) { padding ->
-        NavHost(
-            navController = nav,
-            startDestination = BottomTab.Home.name,
-            modifier = Modifier.padding(padding)
-        ) {
-            composable(BottomTab.Home.name) { com.example.studytimer.ui.home.HomeScreen(vm) }
-            composable(BottomTab.Timer.name) { com.example.studytimer.ui.timer.TimerScreen(vm) }
-            composable(BottomTab.Record.name) { com.example.studytimer.ui.record.RecordScreen(vm) }
-            composable(BottomTab.Profile.name) { com.example.studytimer.ui.profile.ProfileScreen(vm) }
-        }
+    // タイマー背景（画像URIを文字列で保持する想定）
+    val timerBackgroundUri = MutableStateFlow<String?>(null)
+
+    // --- 大事な日 ---
+    val importantTitle = MutableStateFlow("")
+    val importantDate = MutableStateFlow(LocalDate.now().plusDays(30))
+
+    // --- 目標（分）---
+    val dailyGoalMinutes = MutableStateFlow(120)
+    val weeklyGoalMinutes = MutableStateFlow(10 * 60)
+    val monthlyGoalMinutes = MutableStateFlow(40 * 60)
+
+    // --- 学習記録 ---
+    val studyMinutesByDay = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val materials = MutableStateFlow<List<StudyMaterial>>(emptyList())
+
+    fun addStudyMinutes(minutes: Int, date: LocalDate = LocalDate.now()) {
+        if (minutes <= 0) return
+        val day = date.dayOfMonth
+        val map = studyMinutesByDay.value.toMutableMap()
+        map[day] = (map[day] ?: 0) + minutes
+        studyMinutesByDay.value = map
+    }
+
+    fun addMaterial(title: String, comment: String = "", finishedAt: LocalDate = LocalDate.now()) {
+        val list = materials.value.toMutableList()
+        list.add(0, StudyMaterial(title = title, finishedAt = finishedAt, comment = comment))
+        materials.value = list
+    }
+
+    fun removeMaterial(material: StudyMaterial) {
+        materials.value = materials.value.filterNot { it.id == material.id }
     }
 }
