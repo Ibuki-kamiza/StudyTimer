@@ -3,75 +3,90 @@ import SwiftUI
 struct RecordScreen: View {
     @EnvironmentObject var store: StudyStore
 
-    @State private var isShowingStudyForm = false
-    @State private var isShowingMaterialForm = false
+    @State private var minutesText: String = ""
+    @State private var materialTitle: String = ""
+    @State private var materialComment: String = ""
+    @State private var targetDate: Date = Date()
 
     var body: some View {
         NavigationStack {
-            List {
+            Form {
+                // 学習時間を追加
+                Section("学習時間を追加") {
+                    DatePicker("日付", selection: $targetDate, displayedComponents: .date)
 
-                // 勉強時間の記録
-                Section("学習時間") {
-                    Button {
-                        isShowingStudyForm = true
-                    } label: {
-                        HStack {
-                            ZStack {
-                                Image(systemName: "clock")
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 10))
-                                    .offset(x: 8, y: 8)
-                            }
-                            Text("記録する（時間）")
-                        }
+                    TextField("分数（例：30）", text: $minutesText)
+                        .keyboardType(.numberPad)
+
+                    Button("学習時間を追加") {
+                        addMinutes()
                     }
                 }
 
-                // 教材の追加
-                Section("教材") {
-                    Button {
-                        isShowingMaterialForm = true
-                    } label: {
-                        Label("教材の追加", systemImage: "book.closed.fill")
+                // 教材（学習記録）を追加
+                Section("教材の記録を追加") {
+                    TextField("教材名 / タイトル", text: $materialTitle)
+                    TextField("メモ（任意）", text: $materialComment)
+
+                    Button("教材を追加") {
+                        addMaterial()
                     }
+                    .disabled(materialTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
-                // 追加した教材の一覧
+                //記録一覧
                 if !store.materials.isEmpty {
-                    Section("追加した教材") {
-                        ForEach(store.materials) { material in
+                    Section("教材の記録一覧") {
+                        ForEach(store.materials) { m in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(material.title)
+                                Text(m.title)
                                     .font(.headline)
 
-                                Text(material.finishedAt, style: .date)
+                                Text(m.finishedAt, style: .date)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
 
-                                if !material.comment.isEmpty {
-                                    Text(material.comment)
-                                        .font(.caption)
+                                if !m.comment.isEmpty {
+                                    Text(m.comment)
+                                        .font(.subheadline)
                                 }
                             }
                             .padding(.vertical, 4)
                         }
+                        .onDelete(perform: deleteMaterials)
                     }
                 }
             }
             .navigationTitle("記録")
-            // 学習時間入力シート（RecordFormView 側の引数: minutes, date, comment）
-            .sheet(isPresented: $isShowingStudyForm) {
-                RecordFormView { minutes, date, _ in
-                    store.addRecord(date: date, minutes: minutes)
-                }
-            }
-            // 教材追加シート（MaterialFormView 側の引数: title, finishedAt, comment）
-            .sheet(isPresented: $isShowingMaterialForm) {
-                MaterialFormView { title, finishedAt, comment in
-                    store.addMaterial(title: title, finishedAt: finishedAt, comment: comment)
-                }
-            }
         }
+    }
+
+    // MARK: - Actions
+
+    private func addMinutes() {
+        let trimmed = minutesText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let minutes = Int(trimmed), minutes > 0 else { return }
+
+        store.addStudyMinutes(minutes, date: targetDate)
+
+        // 入力リセット
+        minutesText = ""
+    }
+
+    private func addMaterial() {
+        let title = materialTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let comment = materialComment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+
+        // StudyStoreの関数は (title, comment, finishedAt) の順
+        store.addMaterial(title: title, comment: comment, finishedAt: targetDate)
+
+        materialTitle = ""
+        materialComment = ""
+    }
+
+    private func deleteMaterials(at offsets: IndexSet) {
+        offsets.map { store.materials[$0] }.forEach(store.removeMaterial)
     }
 }
 

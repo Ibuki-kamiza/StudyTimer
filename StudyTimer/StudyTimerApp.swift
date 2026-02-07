@@ -18,7 +18,7 @@ struct StudyTimerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()   // ← ここだけ変える
+            MainTabView()   // ここだけ変える
         }
         .modelContainer(sharedModelContainer)
     }

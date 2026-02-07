@@ -1,5 +1,5 @@
 import SwiftUI
-import UserNotifications
+@preconcurrency import UserNotifications
 
 struct MainTabView: View {
     @StateObject private var store = StudyStore()
@@ -9,25 +9,41 @@ struct MainTabView: View {
         TabView {
             TimerScreen()
                 .tabItem { Label("タイマー", systemImage: "clock") }
+
             HomeView()
                 .tabItem { Label("ホーム", systemImage: "house") }
+
             RecordScreen()
                 .tabItem { Label("記録", systemImage: "pencil") }
+
             ProfileScreen()
                 .tabItem { Label("プロフィール", systemImage: "person") }
         }
         .environmentObject(store)
         .onAppear {
-            guard !didSetupNotifications else { return }
-            didSetupNotifications = true
+            setupNotificationsIfNeeded()
+        }
+    }
 
-            let center = UNUserNotificationCenter.current()
-            center.getNotificationSettings { settings in
-                if settings.authorizationStatus == .authorized {
+    // MARK: - 通知セットアップ（1回だけ実行）
+    private func setupNotificationsIfNeeded() {
+        guard !didSetupNotifications else { return }
+        didSetupNotifications = true
+
+        let center = UNUserNotificationCenter.current()
+
+        center.getNotificationSettings { [weak store] settings in
+            guard let store else { return }
+
+            if settings.authorizationStatus == .authorized {
+                Task { @MainActor in
                     store.scheduleGoalNotifications()
-                } else {
-                    center.requestAuthorization(options: [.alert, .sound, .badge]) { ok, _ in
-                        if ok { store.scheduleGoalNotifications() }
+                }
+            } else {
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak store] ok, _ in
+                    guard ok, let store else { return }
+                    Task { @MainActor in
+                        store.scheduleGoalNotifications()
                     }
                 }
             }
@@ -35,5 +51,7 @@ struct MainTabView: View {
     }
 }
 
-#Preview { MainTabView().environmentObject(StudyStore()) }
+#Preview {
+    MainTabView()
+}
 
